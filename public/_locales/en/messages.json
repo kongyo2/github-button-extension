@@ -1,0 +1,10 @@
+{
+  "appDescription": {
+    "message": "Add custom buttons to GitHub repositories",
+    "description": "Description of the extension"
+  },
+  "extensionName": {
+    "message": "GitHub Button Extension",
+    "description": "Name of the extension"
+  }
+}

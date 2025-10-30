@@ -1,27 +1,16 @@
 // Content script for GitHub Button Extension
 // This script runs in the context of GitHub pages
-import './index.css';
 
-/**
- * Function to add custom button to GitHub repository pages
- */
-function addGitHubButton(): void {
+// Function to add custom button to GitHub repository pages
+function addCustomButton(): void {
   // If button already exists, do nothing
-  if (document.querySelector('.github-custom-button')) {
+  if (document.querySelector('.custom-button')) {
     return;
   }
 
   // Get repository main navigation element
   const navActions = document.querySelector<HTMLUListElement>('ul.pagehead-actions');
   if (!navActions) {
-    // Try alternative selectors for newer GitHub UI
-    const alternativeNav = document.querySelector('div[data-testid="action-bar"]') ||
-                          document.querySelector('div[data-testid="repository-header"]') ||
-                          document.querySelector('div[data-testid="repository-title"]');
-    
-    if (!alternativeNav) {
-      return;
-    }
     return;
   }
 
@@ -35,7 +24,7 @@ function addGitHubButton(): void {
 
   // Create button container
   const container = document.createElement('li');
-  container.className = 'github-custom-container';
+  container.className = 'custom-container';
 
   // Create BtnGroup container
   const btnGroup = document.createElement('div');
@@ -44,7 +33,7 @@ function addGitHubButton(): void {
 
   // Create button
   const button = document.createElement('a');
-  button.className = 'btn-sm btn BtnGroup-item github-custom-button';
+  button.className = 'btn-sm btn BtnGroup-item custom-button';
   button.href = `https://example.com/${owner}/${repo}`;
   button.target = '_blank';
   button.rel = 'noopener noreferrer';
@@ -54,7 +43,7 @@ function addGitHubButton(): void {
   const icon = document.createElement('span');
   icon.className = 'octicon';
   icon.innerHTML = `
-    <img src="${chrome.runtime.getURL('public/icons/icon32.png')}" width="16" height="16" alt="Custom Button">
+    <img src="${chrome.runtime.getURL('public/icons/icon64.png')}" width="16" height="16" alt="Custom Button">
   `;
 
   // Add text
@@ -69,15 +58,15 @@ function addGitHubButton(): void {
 }
 
 // Execute immediately and on DOMContentLoaded
-addGitHubButton();
+addCustomButton();
 document.addEventListener('DOMContentLoaded', () => {
-  addGitHubButton();
+  addCustomButton();
 
   // Handle GitHub SPA navigation
   let lastUrl = location.href;
   let isProcessing = false;
 
-  const observer = new MutationObserver((_mutations: MutationRecord[]) => {
+  const observer = new MutationObserver((mutations: MutationRecord[]) => {
     if (isProcessing) return;
     isProcessing = true;
 
@@ -85,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (url !== lastUrl) {
       lastUrl = url;
       setTimeout(() => {
-        addGitHubButton();
+        addCustomButton();
         isProcessing = false;
       }, 500);
       return;
@@ -93,9 +82,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Monitor navigation element addition (only if button doesn't exist)
     const navActions = document.querySelector<HTMLUListElement>('ul.pagehead-actions');
-    const customButton = document.querySelector('.github-custom-button');
+    const customButton = document.querySelector('.custom-button');
     if (navActions && !customButton) {
-      addGitHubButton();
+      addCustomButton();
     }
 
     isProcessing = false;
@@ -108,58 +97,3 @@ document.addEventListener('DOMContentLoaded', () => {
     characterData: false,
   });
 });
-
-/**
- * Message listener - receives messages from background script
- */
-chrome.runtime.onMessage.addListener(
-  (
-    request: { action: string; data?: unknown },
-    sender: chrome.runtime.MessageSender,
-    sendResponse: (response: { success: boolean; data?: unknown; error?: string }) => void
-  ) => {
-    console.log('Message received in content script:', request);
-
-    try {
-      switch (request.action) {
-        case 'ping':
-          // Respond to ping to confirm content script is available
-          sendResponse({ success: true, data: 'pong' });
-          break;
-
-        case 'addButton':
-          // Handle button addition request
-          addGitHubButton();
-          sendResponse({ success: true });
-          break;
-
-        default:
-          sendResponse({
-            success: false,
-            error: `Unknown action: ${request.action}`
-          });
-      }
-    } catch (error) {
-      sendResponse({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-
-    return false; // Synchronous response
-  }
-);
-
-/**
- * Initialization
- */
-function initialize(): void {
-  console.log('GitHub Button Extension content script initialized');
-}
-
-// Run initialization when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initialize);
-} else {
-  initialize();
-}
