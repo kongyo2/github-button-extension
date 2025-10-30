@@ -1,7 +1,7 @@
 {
-  "name": "chrome-extension-boilerplate-ts",
+  "name": "github-button-extension",
   "version": "1.0.0",
-  "description": "A simple Chrome extension boilerplate with TypeScript and Vite",
+  "description": "Chrome extension that adds custom buttons to GitHub repositories",
   "type": "module",
   "scripts": {
     "dev": "nodemon --config nodemon.json",
@@ -16,6 +16,8 @@
   },
   "keywords": [
     "chrome-extension",
+    "github",
+    "button",
     "typescript",
     "vite",
     "boilerplate"
@@ -26,6 +28,7 @@
     "@crxjs/vite-plugin": "^2.2.1",
     "@resvg/resvg-js": "^2.6.2",
     "@types/chrome": "^0.0.268",
+    "@types/node": "^24.9.2",
     "nodemon": "^3.1.10",
     "oxlint": "^1.24.0",
     "typescript": "^5.2.2",

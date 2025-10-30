@@ -1,4 +1,4 @@
-import fs from 'fs'
+import * as fs from 'fs'
 import { resolve } from 'path'
 import type { PluginOption } from 'vite'
 
@@ -11,7 +11,7 @@ export function stripDevIcons(isDev: boolean): PluginOption {
 
   return {
     name: 'strip-dev-icons',
-    renderStart(outputOptions: any) {
+    renderStart(outputOptions: { dir?: string }) {
       const outDir = outputOptions.dir
       if (!outDir) return
 
@@ -25,7 +25,7 @@ export function stripDevIcons(isDev: boolean): PluginOption {
 
       devFiles.forEach((file) => {
         const filePath = resolve(outDir, file)
-        fs.rm(filePath, { force: true }, (err) => {
+        fs.rm(filePath, { force: true }, (err: NodeJS.ErrnoException | null) => {
           if (!err) {
             console.log(`Removed ${file} from production build`)
           }

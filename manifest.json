@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "Chrome Extension Boilerplate",
-  "description": "A simple Chrome extension boilerplate built with TypeScript",
+  "name": "GitHub Button Extension",
+  "short_name": "gh-button",
+  "version": "1.0.0",
+  "description": "Add custom buttons to GitHub repositories",
   "permissions": [
-    "activeTab",
-    "storage",
-    "scripting"
+    "scripting",
+    "storage"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://github.com/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
@@ -19,18 +20,34 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["src/content/index.ts"],
-      "run_at": "document_end"
+      "matches": [
+        "https://github.com/*"
+      ],
+      "js": [
+        "src/content/index.ts"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
     }
   ],
   "action": {
-    "default_title": "Chrome Extension Boilerplate"
+    "default_title": "GitHub Button Extension"
   },
   "icons": {
     "16": "public/icons/icon16.png",
     "32": "public/icons/icon32.png",
     "48": "public/icons/icon48.png",
     "128": "public/icons/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "public/icons/icon16.png",
+        "public/icons/icon32.png",
+        "public/icons/icon48.png",
+        "public/icons/icon128.png"
+      ],
+      "matches": ["https://github.com/*"]
+    }
+  ]
 }

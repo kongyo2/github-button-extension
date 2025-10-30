@@ -1,4 +1,4 @@
-// Background script (Service Worker) for Chrome Extension
+// Background script (Service Worker) for GitHub Button Extension
 // This script runs in the background and handles events
 
 /**
@@ -16,27 +16,99 @@ interface MessageResponse {
 }
 
 /**
+ * Function to inject content scripts into GitHub tabs
+ */
+const injectContentToTab = async (tab: chrome.tabs.Tab): Promise<void> => {
+  // Skip if URL is undefined
+  if (!tab.url) {
+    return;
+  }
+
+  // Skip if tab is discarded
+  if (tab.discarded) {
+    return;
+  }
+
+  // Skip if tab ID is undefined
+  if (tab.id === undefined) {
+    return;
+  }
+
+  // Skip if not a GitHub URL
+  if (!tab.url.startsWith('https://github.com/')) {
+    return;
+  }
+
+  try {
+    const manifest = chrome.runtime.getManifest();
+
+    // Inject CSS
+    if (manifest.content_scripts?.[0]?.css) {
+      await chrome.scripting.insertCSS({
+        target: { tabId: tab.id },
+        files: manifest.content_scripts[0].css,
+      });
+    }
+
+    // Inject JavaScript
+    if (manifest.content_scripts?.[0]?.js) {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: manifest.content_scripts[0].js,
+      });
+    }
+  } catch (error) {
+    console.error('Error injecting content script:', error);
+  }
+};
+
+/**
  * Listen for extension installation or update
  */
 chrome.runtime.onInstalled.addListener((details: chrome.runtime.InstalledDetails) => {
   if (details.reason === 'install') {
-    console.log('Extension installed successfully');
+    console.log('GitHub Button Extension installed successfully');
 
     // Initialize default settings or perform setup tasks
     chrome.storage.local.set({
       initialized: true,
       installedAt: new Date().toISOString()
     });
+
+    // Inject content scripts into existing GitHub tabs
+    chrome.tabs.query({}, async (tabs: chrome.tabs.Tab[]) => {
+      const injectionPromises = tabs.map(async (tab) => {
+        try {
+          await injectContentToTab(tab);
+        } catch (e) {
+          console.error(e);
+        }
+      });
+      
+      await Promise.allSettled(injectionPromises);
+    });
   } else if (details.reason === 'update') {
     const previousVersion = details.previousVersion;
     const currentVersion = chrome.runtime.getManifest().version;
-    console.log(`Extension updated from ${previousVersion} to ${currentVersion}`);
+    console.log(`GitHub Button Extension updated from ${previousVersion} to ${currentVersion}`);
+    
+    // Re-inject content scripts after update
+    chrome.tabs.query({}, async (tabs: chrome.tabs.Tab[]) => {
+      const injectionPromises = tabs.map(async (tab) => {
+        try {
+          await injectContentToTab(tab);
+        } catch (e) {
+          console.error(e);
+        }
+      });
+      
+      await Promise.allSettled(injectionPromises);
+    });
   }
 });
 
 /**
  * Listen for extension icon clicks
- * Remove this listener if you add a popup page
  */
 chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
   if (!tab.id) {
@@ -56,6 +128,12 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
     return;
   }
 
+  // Only work on GitHub pages
+  if (!tab.url || !tab.url.startsWith('https://github.com/')) {
+    console.warn('Extension only works on GitHub pages');
+    return;
+  }
+
   try {
     // First, check if content script is injected by sending a test message
     const testResponse = await chrome.tabs.sendMessage(
@@ -67,18 +145,17 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
       // Content script is available, send the actual message
       const response = await chrome.tabs.sendMessage(
         tab.id,
-        { action: 'iconClicked' } as Message
+        { action: 'addButton' } as Message
       ) as MessageResponse;
 
       if (response.success) {
-        console.log('Message sent successfully:', response.data);
+        console.log('Button added successfully:', response.data);
       } else {
-        console.error('Message failed:', response.error);
+        console.error('Button addition failed:', response.error);
       }
     }
   } catch (error) {
     // This error often occurs when content script hasn't loaded yet
-    // or when trying to access restricted pages
     if (error instanceof Error) {
       console.error('Error sending message:', error.message);
 
@@ -89,7 +166,7 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
           // Try to inject the content script programmatically
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
-            files: ['content.js']
+            files: ['src/content/index.ts']
           });
           
           console.log('Content script injected successfully');
@@ -97,17 +174,16 @@ chrome.action.onClicked.addListener(async (tab: chrome.tabs.Tab) => {
           // Now try sending the message again
           const response = await chrome.tabs.sendMessage(
             tab.id,
-            { action: 'iconClicked' } as Message
+            { action: 'addButton' } as Message
           ) as MessageResponse;
           
           if (response.success) {
-            console.log('Message sent successfully after injection:', response.data);
+            console.log('Button added successfully after injection:', response.data);
           } else {
-            console.error('Message failed after injection:', response.error);
+            console.error('Button addition failed after injection:', response.error);
           }
         } catch (injectError) {
           console.error('Failed to inject content script:', injectError);
-          console.warn('This might be a restricted page or the tab was closed.');
         }
       }
     }
@@ -127,24 +203,24 @@ chrome.runtime.onMessage.addListener(
 
     // Handle different message actions
     switch (request.action) {
-      case 'getData':
-        // Example: Fetch data from storage
-        chrome.storage.local.get(['someKey'], (result) => {
+      case 'getTabInfo':
+        // Example: Get tab information
+        if (sender.tab) {
           sendResponse({
             success: true,
-            data: result.someKey
+            data: {
+              url: sender.tab.url,
+              title: sender.tab.title,
+              id: sender.tab.id
+            }
           });
-        });
-        return true; // Keep the message channel open for async response
-
-      case 'saveData':
-        // Example: Save data to storage
-        chrome.storage.local.set({ someKey: request.data }, () => {
+        } else {
           sendResponse({
-            success: true
+            success: false,
+            error: 'No tab information available'
           });
-        });
-        return true; // Keep the message channel open for async response
+        }
+        return false;
 
       default:
         sendResponse({
@@ -156,11 +232,26 @@ chrome.runtime.onMessage.addListener(
   }
 );
 
-// Example: Listen for tab updates
+// Listen for tab updates to inject content scripts when needed
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete' && tab.url) {
-    console.log(`Tab ${tabId} finished loading: ${tab.url}`);
+  if (changeInfo.status === 'complete' && tab.url && tab.url.startsWith('https://github.com/')) {
+    console.log(`GitHub tab ${tabId} finished loading: ${tab.url}`);
+    
+    // Inject content script into the updated tab
+    void injectContentToTab(tab);
   }
 });
 
-console.log('Background service worker initialized');
+// Listen for new tabs
+chrome.tabs.onCreated.addListener((tab) => {
+  if (tab.url && tab.url.startsWith('https://github.com/')) {
+    console.log(`New GitHub tab created: ${tab.url}`);
+    
+    // Wait a bit for the tab to load, then inject content script
+    setTimeout(() => {
+      void injectContentToTab(tab);
+    }, 1000);
+  }
+});
+
+console.log('GitHub Button Extension background service worker initialized');
