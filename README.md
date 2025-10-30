@@ -133,12 +133,4 @@ github-button-extension/
 
 ## ライセンス
 
-MIT License - 詳細は [LICENSE](LICENSE) ファイルを参照してください。
-
-## 貢献
-
-バグ報告や機能リクエストは、GitHubのIssueセクションからお願いします。プルリクエストも歓迎します。
-
-## 注意事項
-
-この拡張機能はGitHubの公式拡張機能ではありません。GitHubのUI変更により、動作しなくなる可能性があります。
+MIT License 
